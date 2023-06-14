@@ -1,7 +1,8 @@
 package ru.kata.spring.boot_security.demo.service;
 
-import org.hibernate.validator.internal.util.stereotypes.Lazy;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -9,61 +10,72 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import ru.kata.spring.boot_security.demo.model.Role;
-import ru.kata.spring.boot_security.demo.model.User;
+import org.springframework.transaction.annotation.Transactional;
+import ru.kata.spring.boot_security.demo.model.*;
 import ru.kata.spring.boot_security.demo.repository.UserRepository;
 
-import javax.transaction.Transactional;
+
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
+
 @Service
 public class UserServiceImp implements UserService, UserDetailsService {
-    private final  UserRepository userRepository;
-    private final  PasswordEncoder passwordEncoder;
 
-    public UserServiceImp(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    private UserRepository userRepository;
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    public UserServiceImp(UserRepository userRepository, @Lazy PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
     }
-    public User findByUsername(String name) {
-        return userRepository.findByUsername(name);
+
+    public User findByUsername (String email) {
+        return userRepository.findByUsername(email);
     }
+
     @Override
-    public UserDetails loadUserByUsername(String name) throws UsernameNotFoundException {
-        User user = findByUsername(name);
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+        User user = findByUsername(email);
         if (user == null) {
-            throw new UsernameNotFoundException(String.format("User `%s` not found", name));
+            throw new UsernameNotFoundException(String.format("User `%s` not found", email));
         }
-        return new org.springframework.security.core.userdetails.User(user.getName(), user.getPassword(),mapRolesToAuthority(user.getRoles()));
+        return new org.springframework.security.core.userdetails.User(user.getEmail(), user.getPassword(),mapRolesToAuthority(user.getRoles()));
     }
 
     private Collection<? extends GrantedAuthority> mapRolesToAuthority (Collection<Role> roles) {
         return roles.stream().map(r ->new SimpleGrantedAuthority(r.getName())).collect(Collectors.toList());
     }
-    @Transactional
-    @Override
-    public void add(User user) {
 
-    }
     @Transactional
-    @Override
-    public void update(User user) {
+    public void add (User user) {
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        userRepository.save(user);
+    }
 
-    }
     @Transactional
-    @Override
-    public void delete(Long id) {
+    public void update (User user) {
+        if (user.getRoles() == null) {
+            user.setRoles(show(user.getId()).getRoles());
+        }
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        userRepository.save(user);
+    }
 
-    }
     @Transactional
-    @Override
-    public List<User> getAllUser() {
-        return null;
+    public void delete (Long id) {
+        userRepository.delete(userRepository.findById(id).get());
     }
+
     @Transactional
-    @Override
-    public User show(Long id) {
-        return null;
+    public List<User> getAll () {
+        return userRepository.findAll();
+    }
+
+    @Transactional
+    public User show (Long id) {
+        return userRepository.findById(id).get();
     }
 }
