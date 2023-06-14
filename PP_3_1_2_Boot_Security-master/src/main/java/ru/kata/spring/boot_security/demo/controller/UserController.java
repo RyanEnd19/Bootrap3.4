@@ -1,30 +1,28 @@
 package ru.kata.spring.boot_security.demo.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Controller;
-import org.springframework.ui.ModelMap;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.CurrentSecurityContext;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import ru.kata.spring.boot_security.demo.model.User;
-import ru.kata.spring.boot_security.demo.service.*;
-
+import org.springframework.web.bind.annotation.RestController;
+import ru.kata.spring.boot_security.demo.entity.User;
+import ru.kata.spring.boot_security.demo.service.UserService;
 
 import java.security.Principal;
+import java.util.Optional;
 
-@Controller
+@RestController
 public class UserController {
-    private final UserService userServiceImp;
 
-    @Autowired
-    public UserController(UserService userServiceImp) {
-        this.userServiceImp = userServiceImp;
+    private final UserService userService;
+
+    public UserController(UserService userService) {
+        this.userService = userService;
     }
 
-    @GetMapping("/user")
-    public String onlyForUser (Principal principal, ModelMap model) {
-        User user = userServiceImp.findByUsername(principal.getName());
-        model.addAttribute("user", user);
-        return "user";
+    @GetMapping(path = "/api/auth", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Optional<User>> getAuthUser(@CurrentSecurityContext(expression = "authentication") Principal principal) {
+        Optional<User> user = userService.findByUsername(principal.getName());
+        return ResponseEntity.ok(user);
     }
-
 }
